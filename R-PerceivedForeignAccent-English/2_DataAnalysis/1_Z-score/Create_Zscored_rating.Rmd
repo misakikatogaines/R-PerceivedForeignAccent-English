@@ -1,0 +1,83 @@
+---
+title: "Z-score_MinMaxScaling_All"
+author: "Misaki Kato"
+date: "1/2/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+## Clear the environment
+```{r}
+rm(list = ls())
+```
+
+## Read in the data (CSV)
+```{r}
+dat=read.csv("Analysis.csv")
+
+str(dat)
+```
+
+
+#########################################
+######### Z-score the RESP_NUM ##########
+
+### Create Z-scored ratings (in a different column) ###
+
+```{r}
+dat$mTurkCode = as.factor(as.character(dat$mTurkCode)) #this is the listener column
+dat$Resp_NUM= as.numeric(as.character(dat$Resp_NUM)) #this is the response column (we z-score normalize these values for each listener)
+```
+
+## First: sort the data by listener. 
+```{r}
+newDat = dat[order(dat$mTurkCode),]
+```
+
+## Get list of listeners to subset the data by listener:
+```{r}
+listeners = unique(newDat$mTurkCode)
+length(listeners) # 40 unique listeners
+```
+
+## Initialize new vector for z-scored values: 
+```{r}
+# these columns start out empty, but every time you get a new value you add that value to that column. 
+zscore_Resp_NUM = c()
+```
+
+# For loop 
+```{r}
+for (l in listeners){
+	###Get subset of data for current listener:
+	listener = subset(newDat, mTurkCode == l) # pull out that listener's rows as a new data frame. 
+	
+	### Get the values you need for calculating
+	## For z-scores:
+	mean_Resp_NUM = mean(listener$Resp_NUM)
+	sd_Resp_NUM = sd(listener$Resp_NUM)
+
+	###Loop through data for the current listener and get z-scores:
+	for (i in 1:length(listener$Resp_NUM)){
+	  
+	  ## z-score range_f0
+		z_Resp_NUM = (listener$Resp_NUM[i] - mean_Resp_NUM) / sd_Resp_NUM 
+		zscore_Resp_NUM = c(zscore_Resp_NUM, z_Resp_NUM) # adding the value z_f0_range to the vector "zscore_range_f0"
+	}
+}
+```
+
+
+## Add z-score column to dataframe "newDat":
+```{r}
+newDat$zscore_Resp_NUM = zscore_Resp_NUM
+```
+
+
+## Write new dataframe to CSV or txt file:
+```{r}
+write.csv(newDat, file = "Analysis_Z.csv")
+```
+
+
+--- End of script ---

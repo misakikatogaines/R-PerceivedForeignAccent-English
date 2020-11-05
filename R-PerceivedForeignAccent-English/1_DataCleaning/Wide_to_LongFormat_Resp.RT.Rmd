@@ -1,0 +1,77 @@
+---
+title: "Wide_to_LongFormat_Resp_RT"
+author: "Misaki Kato"
+date: "12/12/2019"
+output: html_document
+---
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(stringr)
+```
+
+# Read in the data
+```{r}
+setwd("~/Dropbox/Misaki/Dissertation/CLSP/1_BKB_Perception/0_Production_Materials/Accentedness_12Talkers/2_results")
+dat.wide = read.csv("Dissertation_Exp1.2_Accent_WideFormat.csv")
+```
+
+# Data manipulation
+
+# First, use gather() to convert the wide format to long format 
+```{r}
+str(dat.wide)
+
+# The arguments to gather():
+# - data: Data object
+# - key: Name of new key column (made from names of data columns)
+# - value: Name of new value column
+# - ...: Names of source columns that contain values
+# - factor_key: Treat the new key column as a factor (instead of character vector)
+
+dat.long <- gather(dat.wide, DataType, Value, X1_Resp:X61_Timing_Click.Count, factor_key=TRUE)
+View(dat.long)
+
+typeof(dat.long$DataType) # integer 
+dat.long$DataType <- as.character(dat.long$DataType) #convert from integer to character for the next manipulation
+```
+
+# Right now, we have values of all the response types collapsed into one column (Response, RT first click, etc.). 
+# So we are going to create different columns to separate these values. 
+```{r}
+# Replace the first "_" (!! not all "_") with "|" - because we are going to separate the texts into two later. 
+  # the mutate functon adds new variables and preserves existing ones
+dat.long2 <- dat.long %>% 
+  mutate(DataType = str_replace(DataType, "_", "|"))
+
+# Separate the DataType into two texts based on "|", using spread()
+  # "\\|" is a regular expression
+
+    # data: The data to be reformatted (inprogress)
+    # key: The column you want to split apart (Field)
+    # value: The column you want to use to populate the new columns (the value column we just created in the spread step)
+    # fill: what to substitute if there are combinations that don’t exist (not a problem here)
+    # convert: whether to fix incorrect data types as it goes (not a problem here)
+
+dat.long_sep <- separate(data = dat.long2, col = "DataType", into = c("ItemNum", "ResponseType"), sep = "\\|")
+head(dat.long_sep)
+
+dat.long_sep$ItemNum <- as.factor(dat.long_sep$ItemNum)
+levels(dat.long_sep$ItemNum)
+
+# This is the final step: we will 'spread' the different response types in the "ResponseType" into different columns. 
+dat.long.final <- spread(data = dat.long_sep,key = ResponseType, value = Value)
+head(dat.long.final)
+View(dat.long.final)
+```
+
+# change the order of rows by listner group
+```{r}
+dat.long.final <- dat.long.final[order(dat.long.final$ListenerGroup, dat.long.final$ItemNum), ]
+```
+
+write csv
+```{r}
+write.csv(dat.long.final, file = "LongFormat.csv")
+```

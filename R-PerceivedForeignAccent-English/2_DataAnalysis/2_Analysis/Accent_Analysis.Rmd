@@ -1,0 +1,152 @@
+---
+title: "Accent_Analysis"
+author: "Misaki Kato"
+date: "12/12/2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+Clear the environment
+```{r}
+rm(list = ls(all.names = TRUE))
+```
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(lme4)
+library(lsmeans)
+library(lmerTest)
+library(afex)
+```
+
+
+Read in the data
+```{r}
+acc.dat = read.csv("Analysis_Z.csv")
+```
+
+Look at the data & clean up data
+```{r}
+str(acc.dat)
+acc.dat$Resp_NUM = as.numeric(as.character(acc.dat$Resp_NUM))
+acc.dat$ItemNumber = as.factor(as.character(acc.dat$ItemNumber))
+acc.dat$ProductionPresentationOrder = as.factor(as.character(acc.dat$ProductionPresentationOrder))
+acc.dat$SentenceOrder = as.factor(as.character(acc.dat$SentenceOrder))
+acc.dat$SurveyDurSec = as.numeric(as.character(acc.dat$Duration..in.seconds.))
+acc.dat$ListenerID = as.factor(as.character(acc.dat$mTurkCode))
+acc.dat$Talker = as.factor(as.character(acc.dat$Talker))
+
+# rename the levels of the TalkerGroup & re-order
+acc.dat$TalkerGroup = as.factor(as.character(acc.dat$TalkerGroup))
+levels(acc.dat$TalkerGroup)
+levels(acc.dat$TalkerGroup)[levels(acc.dat$TalkerGroup)=="NativeEnglish (NTE)"] <- "NativeEnglish"
+levels(acc.dat$TalkerGroup)[levels(acc.dat$TalkerGroup)=="NativeMandarin-High (NMH)"] <- "NativeMandarin-High"
+levels(acc.dat$TalkerGroup)[levels(acc.dat$TalkerGroup)=="NativeMandarin-Low (NML)"] <- "NativeMandarin-Low"
+```
+
+Plot: Raw rating
+```{r}
+acc.dat.plot.prep = acc.dat %>% group_by(TalkerGroup) %>% summarise(mean = mean(Resp_NUM, na.rm=TRUE), sd = sd(Resp_NUM, na.rm=TRUE), n = n(), sem=sd(Resp_NUM , na.rm=TRUE)/sqrt(n), ci=qt(0.975,df=n-1)*sem)
+
+ggplot(data = acc.dat.plot.prep, aes(x = TalkerGroup, y = mean, ymin=mean-ci, ymax=mean+ci)) + 
+  geom_bar(stat="identity", position=position_dodge(), colour="black") + 
+  geom_errorbar(width=.1, position=position_dodge(width = 0.5)) + 
+  labs(y="Perceived accentedness") +
+  theme(axis.title.x = element_blank(),  axis.title.y = element_text(size=18, vjust=1.5), 
+        axis.text.x  = element_text(size=18, colour ="black"), axis.text.y = 
+        element_text(size=20, colour ="black"), panel.background = element_rect(fill = 
+        "white"), panel.grid.major = element_line(colour = "gray"), panel.grid.major.x = 
+        element_blank()) + scale_y_continuous(limits = c(0,9))
+
+## by talker
+acc.dat.plot.prep2 = acc.dat %>% group_by(Talker) %>% summarise(mean = mean(Resp_NUM, na.rm=TRUE), sd = sd(Resp_NUM, na.rm=TRUE), n = n(), sem=sd(Resp_NUM, na.rm=TRUE)/sqrt(n), ci=qt(0.975,df=n-1)*sem)
+
+ggplot(data = acc.dat.plot.prep2, aes(x = Talker, y = mean, ymin=mean-ci, ymax=mean+ci)) + 
+  geom_bar(stat="identity", position=position_dodge(), colour="black") + 
+  geom_errorbar(width=.1, position=position_dodge(width = 0.5)) + 
+  labs(y="Perceived accentedness") +
+  theme(axis.title.x = element_blank(),  axis.title.y = element_text(size=18, vjust=1.5), 
+        axis.text.x  = element_text(size=18, colour ="black"), axis.text.y = 
+        element_text(size=20, colour ="black"), panel.background = element_rect(fill = 
+        "white"), panel.grid.major = element_line(colour = "gray"), panel.grid.major.x = 
+        element_blank()) + scale_y_continuous(limits = c(0,9))
+```
+
+
+Plot: Z-scored rating
+```{r}
+acc.dat.plotZ.prep = acc.dat %>% group_by(TalkerGroup) %>% summarise(mean = mean(zscore_Resp_NUM, na.rm=TRUE), sd = sd(zscore_Resp_NUM, na.rm=TRUE), n = n(), sem=sd(zscore_Resp_NUM, na.rm=TRUE)/sqrt(n), ci=qt(0.975,df=n-1)*sem)
+
+ggplot(data = acc.dat.plotZ.prep, aes(x = TalkerGroup, y = mean, ymin=mean-ci, ymax=mean+ci)) + 
+  geom_bar(stat="identity", position=position_dodge(), colour="black") + 
+  geom_errorbar(width=.1, position=position_dodge(width = 0.5)) + 
+  labs(y="Perceived accentedness (Z-scored)") +
+  theme(axis.title.x = element_blank(),  axis.title.y = element_text(size=18, vjust=1.5), 
+        axis.text.x  = element_text(size=18, colour ="black"), axis.text.y = 
+        element_text(size=20, colour ="black"), panel.background = element_rect(fill = 
+        "white"), panel.grid.major = element_line(colour = "gray"), panel.grid.major.x = 
+        element_blank()) + scale_y_continuous(limits = c(-1.5,1.5))
+
+## by talker
+acc.dat.plotZ.prep2 = acc.dat %>% group_by(Talker) %>% summarise(mean = mean(zscore_Resp_NUM, na.rm=TRUE), sd = sd(zscore_Resp_NUM, na.rm=TRUE), n = n(), sem=sd(zscore_Resp_NUM, na.rm=TRUE)/sqrt(n), ci=qt(0.975,df=n-1)*sem)
+
+ggplot(data = acc.dat.plotZ.prep2, aes(x = Talker, y = mean, ymin=mean-ci, ymax=mean+ci)) + 
+  geom_bar(stat="identity", position=position_dodge(), colour="black") + 
+  geom_errorbar(width=.1, position=position_dodge(width = 0.5)) + 
+  labs(y="Perceived accentedness (Z-scored)") +
+  theme(axis.title.x = element_blank(),  axis.title.y = element_text(size=18, vjust=1.5), 
+        axis.text.x  = element_text(size=18, colour ="black"), axis.text.y = 
+        element_text(size=20, colour ="black"), panel.background = element_rect(fill = 
+        "white"), panel.grid.major = element_line(colour = "gray"), panel.grid.major.x = 
+        element_blank()) + scale_y_continuous(limits = c(-1.5,1.5))
+```
+
+
+
+ANOVA - analyze the Z-scored data
+```{r}
+is.factor(acc.dat$TalkerGroup)
+is.numeric(acc.dat$zscore_Resp_NUM)
+
+(aov.model <- aov_car(zscore_Resp_NUM ~ TalkerGroup + Error(Talker), anova_table = list(es = "pes"), acc.dat))
+```
+
+Response: zscore_Resp_NUM
+       Effect   df  MSE          F  pes p.value
+1 TalkerGroup 2, 9 0.03 128.29 *** .966   <.001
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘+’ 0.1 ‘ ’ 1
+
+
+
+# performing multiple pairwise-comparison between the means of groups.
+```{r}
+lsmeans(aov.model, pairwise ~ TalkerGroup, adjust="tukey") 
+```
+
+$lsmeans
+ TalkerGroup          lsmean     SE df lower.CL upper.CL
+ NativeEnglish       -0.9841 0.0848  9   -1.176   -0.792
+ NativeMandarin-High  0.0478 0.0848  9   -0.144    0.240
+ NativeMandarin-Low   0.9364 0.0848  9    0.744    1.128
+
+Confidence level used: 0.95 
+
+$contrasts
+ contrast                                     estimate   SE df t.ratio p.value
+ NativeEnglish - (NativeMandarin-High)          -1.032 0.12  9  -8.600 <.0001 
+ NativeEnglish - (NativeMandarin-Low)           -1.921 0.12  9 -16.006 <.0001 
+ (NativeMandarin-High) - (NativeMandarin-Low)   -0.889 0.12  9  -7.406 0.0001 
+
+P value adjustment: tukey method for comparing a family of 3 estimates 
+
+
+
+--- End of script ---
+
+
+
+
